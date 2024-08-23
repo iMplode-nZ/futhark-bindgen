@@ -8,7 +8,7 @@ mod package;
 
 pub use compiler::Compiler;
 pub use error::Error;
-pub use generate::{Config, Generate, OCaml, Rust};
+pub use generate::{Config, DefaultNamer, Generate, Rust};
 pub use manifest::Manifest;
 pub use package::Package;
 
@@ -25,13 +25,13 @@ pub enum Backend {
     ///
     /// Requires the CUDA runtime and a C compiler
     #[serde(rename = "cuda")]
-    CUDA,
+    Cuda,
 
     /// OpenCL backend: `futhark opencl`
     ///
     /// Requires OpenCL and a C compiler
     #[serde(rename = "opencl")]
-    OpenCL,
+    OpenCl,
 
     /// Multicore C backend: `futhark multicore`
     ///
@@ -44,13 +44,13 @@ pub enum Backend {
     /// Requires the `ispc` compiler in your `$PATH`
     /// and a C compiler
     #[serde(rename = "ispc")]
-    ISPC,
+    Ispc,
 
     /// HIP backend: `futhark hip`
     ///
     /// Requires a C compiler
     #[serde(rename = "hip")]
-    HIP,
+    Hip,
 }
 
 impl Backend {
@@ -58,11 +58,11 @@ impl Backend {
     pub fn to_str(&self) -> &'static str {
         match self {
             Backend::C => "c",
-            Backend::CUDA => "cuda",
-            Backend::OpenCL => "opencl",
+            Backend::Cuda => "cuda",
+            Backend::OpenCl => "opencl",
             Backend::Multicore => "multicore",
-            Backend::ISPC => "ispc",
-            Backend::HIP => "hip",
+            Backend::Ispc => "ispc",
+            Backend::Hip => "hip",
         }
     }
 
@@ -70,10 +70,10 @@ impl Backend {
     pub fn from_name(name: &str) -> Option<Backend> {
         match name.to_ascii_lowercase().as_str() {
             "c" => Some(Backend::C),
-            "cuda" => Some(Backend::CUDA),
-            "opencl" => Some(Backend::OpenCL),
+            "cuda" => Some(Backend::Cuda),
+            "opencl" => Some(Backend::OpenCl),
             "multicore" => Some(Backend::Multicore),
-            "ispc" => Some(Backend::ISPC),
+            "ispc" => Some(Backend::Ispc),
             _ => None,
         }
     }
@@ -89,10 +89,10 @@ impl Backend {
     /// Returns the C libraries that need to be linked for a backend
     pub fn required_c_libs(&self) -> &'static [&'static str] {
         match self {
-            Backend::CUDA => &["cuda", "cudart", "nvrtc", "m"],
-            Backend::OpenCL => &["OpenCL", "m"],
-            Backend::Multicore | Backend::ISPC => &["pthread", "m"],
-            Backend::HIP => &["hiprtc", "amdhip64"],
+            Backend::Cuda => &["cuda", "cudart", "nvrtc", "m"],
+            Backend::OpenCl => &["OpenCL", "m"],
+            Backend::Multicore | Backend::Ispc => &["pthread", "m"],
+            Backend::Hip => &["hiprtc", "amdhip64"],
             _ => &[],
         }
     }
@@ -112,6 +112,8 @@ pub fn build(
     src: impl AsRef<std::path::Path>,
     dest: impl AsRef<std::path::Path>,
 ) {
+    use generate::DefaultNamer;
+
     let out = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap());
     let dest = std::path::PathBuf::from(&out).join(dest);
     let lib = Compiler::new(backend, src)
@@ -119,7 +121,8 @@ pub fn build(
         .compile()
         .expect("Compilation failed");
 
-    let mut config = Config::new(&dest).expect("Unable to configure codegen");
+    let mut config =
+        Config::new(&dest, DefaultNamer::default()).expect("Unable to configure codegen");
     let mut gen = config.detect().expect("Invalid output language");
     gen.generate(&lib, &mut config)
         .expect("Code generation failed");

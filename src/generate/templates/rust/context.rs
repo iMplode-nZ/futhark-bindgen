@@ -1,8 +1,9 @@
 #[derive(Debug)]
 pub enum Error {{
-    Code(std::os::raw::c_int),
+    Code(core::ffi::c_int),
     NullPtr,
     InvalidShape,
+    IndexOutOfBounds,
 }}
 
 impl std::fmt::Display for Error {{
@@ -11,6 +12,7 @@ impl std::fmt::Display for Error {{
             Error::Code(code) => write!(fmt, "Futhark error code: {{code}}"),
             Error::NullPtr => write!(fmt, "NULL pointer encountered"),
             Error::InvalidShape => write!(fmt, "Invalid image shape"),
+            Error::IndexOutOfBounds => write!(fmt, "Index out of bounds"),
         }}
     }} 
 }}
@@ -91,7 +93,7 @@ pub struct Context {{
 
 impl Context {{
     /// Create a new context with default options
-    pub fn new() -> std::result::Result<Self, Error> {{
+    pub fn new() -> Result<Self, Error> {{
         unsafe {{
             let config = futhark_context_config_new();
             if config.is_null() {{ return Err(Error::NullPtr) }}
@@ -105,14 +107,14 @@ impl Context {{
     }}
 
     /// Create a new context with custom options
-    pub fn new_with_options(options: Options) -> std::result::Result<Self, Error> {{
+    pub fn new_with_options(options: Options) -> Result<Self, Error> {{
         unsafe {{
             let config = futhark_context_config_new();
             if config.is_null() {{ return Err(Error::NullPtr) }}
 
-            futhark_context_config_set_debugging(config, options.debug as std::os::raw::c_int);
-            futhark_context_config_set_profiling(config, options.profile as std::os::raw::c_int);
-            futhark_context_config_set_logging(config, options.logging as std::os::raw::c_int);
+            futhark_context_config_set_debugging(config, options.debug as core::ffi::c_int);
+            futhark_context_config_set_profiling(config, options.profile as core::ffi::c_int);
+            futhark_context_config_set_logging(config, options.logging as core::ffi::c_int);
 
             if let Some(c) = &options.cache_file {{
                 futhark_context_config_set_cache_file(config, c.as_ptr());
@@ -143,7 +145,7 @@ impl Context {{
     }}
 
     /// Clear Futhark caches
-    pub fn clear_caches(&self) -> std::result::Result<(), Error> {{
+    pub fn clear_caches(&self) -> Result<(), Error> {{
         let rc = unsafe {{
             futhark_context_clear_caches(self.context)
         }};
@@ -216,22 +218,22 @@ extern "C" {{
     );
     fn futhark_context_config_set_debugging(
         _: *mut futhark_context_config,
-        _: std::os::raw::c_int
+        _: core::ffi::c_int
     );
 
     fn futhark_context_config_set_profiling(
         _: *mut futhark_context_config,
-        _: std::os::raw::c_int
+        _: core::ffi::c_int
     );
 
     fn futhark_context_config_set_logging(
         _: *mut futhark_context_config,
-        _: std::os::raw::c_int
+        _: core::ffi::c_int
     );
 
     fn futhark_context_config_set_cache_file(
         _: *mut futhark_context_config,
-        _: *const std::os::raw::c_char,
+        _: *const core::ffi::c_char,
     );
 
     fn futhark_context_new(
@@ -244,11 +246,11 @@ extern "C" {{
 
     fn futhark_context_sync(
         _: *mut futhark_context,
-    ) -> std::os::raw::c_int;
+    ) -> core::ffi::c_int;
 
     fn futhark_context_clear_caches(
         _: *mut futhark_context,
-    ) -> std::os::raw::c_int;
+    ) -> core::ffi::c_int;
 
     fn futhark_context_pause_profiling(
         _: *mut futhark_context
@@ -260,13 +262,18 @@ extern "C" {{
 
     fn futhark_context_get_error(
         _: *mut futhark_context
-    ) -> *mut std::os::raw::c_char;
+    ) -> *mut core::ffi::c_char;
 
     fn futhark_context_report(
         _: *mut futhark_context
-    ) -> *mut std::os::raw::c_char;
+    ) -> *mut core::ffi::c_char;
 
     fn free(_: *mut std::ffi::c_void);
 
     {backend_extern_functions}
+}}
+
+pub trait FutharkArray {{
+    const RANK: usize;
+    type Element;
 }}

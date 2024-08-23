@@ -19,7 +19,7 @@ pub struct Package {
 impl Package {
     #[cfg(feature = "build")]
     fn build(&self, libname: &str) {
-        if self.manifest.backend == Backend::ISPC {
+        if self.manifest.backend == Backend::Ispc {
             let kernels = self.c_file.with_extension("kernels.ispc");
             let dest = kernels.with_extension("o");
             std::process::Command::new("ispc")

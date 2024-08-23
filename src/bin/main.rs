@@ -85,7 +85,7 @@ fn main() -> Result<(), Error> {
                 compiler = compiler.with_executable_name(exe);
             }
             let pkg = compiler.compile()?;
-            let mut config = Config::new(args.output)?;
+            let mut config = Config::new(args.output, DefaultNamer::default())?;
             let mut gen = config.detect().expect("Unable to detect output language");
             gen.generate(&pkg, &mut config)?;
         }

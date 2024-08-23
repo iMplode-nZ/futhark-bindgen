@@ -1,7 +1,8 @@
 use crate::*;
+use serde::Deserialize;
 
 /// Scalar types
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum ElemType {
     /// Signed 8 bit integer
     #[serde(rename = "i8")]
@@ -71,70 +72,117 @@ impl ElemType {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Output {
     pub r#type: String,
     pub unique: bool,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Input {
     pub name: String,
     pub r#type: String,
     pub unique: bool,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Entry {
     pub cfun: String,
     pub outputs: Vec<Output>,
     pub inputs: Vec<Input>,
+    pub tuning_params: Vec<String>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ArrayOps {
     pub free: String,
+    pub index: String,
+    pub new: String,
+    // pub new_raw: String,
     pub shape: String,
     pub values: String,
-    pub new: String,
+    // pub values_raw: String,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ArrayType {
     pub ctype: String,
-    pub rank: i32,
+    pub rank: usize,
     pub elemtype: ElemType,
     pub ops: ArrayOps,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpaqueOps {
     pub free: String,
     pub store: String,
     pub restore: String,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Field {
     pub name: String,
     pub project: String,
     pub r#type: String,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpaqueType {
+    pub ctype: String,
+    pub ops: OpaqueOps,
+    #[serde(flatten)]
+    pub options: OpaqueOptions,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 pub struct Record {
     pub new: String,
     pub fields: Vec<Field>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
-pub struct OpaqueType {
-    pub ctype: String,
-    pub ops: OpaqueOps,
-    pub record: Option<Record>,
+#[derive(Clone, Debug, Deserialize)]
+pub struct Variant {
+    pub construct: String,
+    pub destruct: String,
+    pub payload: Vec<String>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
+pub struct Sum {
+    pub variant: String,
+    pub variants: Vec<Variant>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct RecordArray {
+    pub zip: String,
+    pub fields: Vec<Field>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpaqueArray {
+    pub rank: usize,
+    pub elemtype: String,
+    pub index: String,
+    pub shape: String,
+    #[serde(flatten)]
+    pub record: Option<RecordArray>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub enum OpaqueOptions {
+    #[serde(rename = "record")]
+    Record(Record),
+    #[serde(rename = "sum")]
+    Sum(Sum),
+    // Blocking on https://github.com/serde-rs/serde/issues/1847.
+    #[serde(rename = "opaque_array")]
+    OpaqueArray(OpaqueArray),
+    #[serde(rename = "record_array")]
+    RecordArray(OpaqueArray),
+}
+
+#[derive(Clone, Debug, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Type {
     #[serde(rename = "array")]
@@ -142,9 +190,17 @@ pub enum Type {
     #[serde(rename = "opaque")]
     Opaque(OpaqueType),
 }
+impl Type {
+    pub fn ctype(&self) -> &str {
+        match self {
+            Type::Array(ArrayType { ctype, .. }) => ctype,
+            Type::Opaque(OpaqueType { ctype, .. }) => ctype,
+        }
+    }
+}
 
 /// A Rust encoding of the Futhark manifest file
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Manifest {
     pub backend: Backend,
     pub version: String,

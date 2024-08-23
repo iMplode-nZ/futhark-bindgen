@@ -159,7 +159,7 @@ impl Generate for OCaml {
                     )
                 ));
             }
-            Backend::CUDA | Backend::OpenCL => {
+            Backend::Cuda | Backend::OpenCl => {
                 generated_foreign_functions.push(format!(
                     "  {}",
                     self.foreign_function(
@@ -306,7 +306,7 @@ impl Generate for OCaml {
                 "?num_threads:int ->",
             ),
 
-            Backend::CUDA | Backend::OpenCL => (
+            Backend::Cuda | Backend::OpenCl => (
                 "?device",
                 "    Option.iter (Bindings.futhark_context_config_set_device config) device;",
                 "?device:string ->",

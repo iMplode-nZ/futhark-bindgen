@@ -1,12 +1,15 @@
 impl<'a> {rust_type}<'a> {{
-    /// Get {field_name} field
-    pub fn get_{field_name}(&self) -> Result<{rust_field_type}, Error> {{
+    pub fn {project_name}(&self) -> {rust_field_type} {{
+        self.{project_name}_checked().unwrap()
+    }}
+    /// Get the {field_name} field
+    pub fn {project_name}_checked(&self) -> Result<{rust_field_type}, Error> {{
         let mut out = std::mem::MaybeUninit::zeroed();
         let rc = unsafe {{
             {project_fn}(
                 self.ctx.context,
                 out.as_mut_ptr(),
-                self.data
+                self.ptr
             )
         }};
         if rc != 0 {{ return Err(Error::Code(rc)); }}
@@ -18,8 +21,8 @@ impl<'a> {rust_type}<'a> {{
 
 extern "C" {{
     fn {project_fn}(
-        _: *mut futhark_context,
-        _: *mut {futhark_field_type},
-        _: *const {futhark_type}
-    ) -> std::os::raw::c_int;
+        ctx: *mut futhark_context,
+        _: *mut {raw_arg_type},
+        _: *const {raw_type}
+    ) -> core::ffi::c_int;
 }}
